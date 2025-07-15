@@ -84,8 +84,8 @@ if st.button("📤 Generar y Enviar Pedido"):
 
     # Vía normalizada
     df_final["via"] = df_final["via"].replace({
-        "AEREO": "AEREA", "AÉREA": "AEREA", "AÉREO": "AEREA",
-        "MARITIMO": "MARITIMA", "MARÍTIMO": "MARITIMA", "MARÍTIMA": "MARITIMA"
+        "AEREO": "air", "AÉREA": "air", "AÉREO": "air",
+        "MARITIMO": "sea", "MARÍTIMO": "sea", "MARÍTIMA": "sea"
     })
 
     # 4. Agrupar por tipo de envío
@@ -95,9 +95,9 @@ if st.button("📤 Generar y Enviar Pedido"):
     archivos_generados = []
 
     for via, df_grupo in agrupado:
-        if via == "AEREA":
+        if via == "air":
             folder = "air/pending/"
-        elif via == "MARITIMA":
+        elif via == "sea":
             folder = "sea/pending/"
         else:
             errores.append(via)
