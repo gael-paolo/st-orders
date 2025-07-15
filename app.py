@@ -23,7 +23,7 @@ credentials = service_account.Credentials.from_service_account_info(credentials_
 def normalizar(texto):
     if pd.isnull(texto):
         return ""
-    texto = str(texto).strip().lower()
+    texto = str(texto).strip().upper()
     texto = unicodedata.normalize("NFD", texto).encode("ascii", "ignore").decode("utf-8")
     return texto
 
@@ -83,22 +83,26 @@ if st.button("📤 Generar y Enviar Pedido"):
     for col in df_final.columns:
         df_final[col] = df_final[col].apply(normalizar)
 
+    # Vía normalizada (analiza variantes)
     df_final["via"] = df_final["via"].replace({
-        "aereo": "aerea",
-        "aérea": "aerea",
-        "maritimo": "maritima",
-        "marítima": "maritima"
+        "AEREO": "AEREA",
+        "AÉREA": "AEREA",
+        "AÉREO": "AEREA",
+        "MARITIMO": "MARITIMA",
+        "MARÍTIMO": "MARITIMA",
+        "MARÍTIMA": "MARITIMA"
     })
 
     # 4. Agrupar por tipo de envío
     agrupado = df_final.groupby("via")
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     errores = []
+    archivos_generados = []
 
     for via, df_grupo in agrupado:
-        if via == "aerea":
+        if via == "AEREA":
             folder = "air/pending/"
-        elif via == "maritima":
+        elif via == "MARITIMA":
             folder = "sea/pending/"
         else:
             errores.append(via)
@@ -121,8 +125,16 @@ if st.button("📤 Generar y Enviar Pedido"):
         except Exception as e:
             errores.append(f"{via}: {e}")
 
-    # 5. Resultado
+    # 5.Resultado
     if errores:
         st.warning(f"⚠️ Algunos envíos fallaron o tenían vía no reconocida: {errores}")
     else:
         st.success("✅ Todos los pedidos fueron enviados correctamente.")
+
+        for df_csv, nombre_archivo, ruta_archivo in archivos_generados:
+            with open(ruta_archivo, "rb") as f:
+                st.download_button(
+                    label=f"📥 Descargar {nombre_archivo}",
+                    data=f.read(),
+                    file_name=nombre_archivo,
+                    mime="text/csv")
