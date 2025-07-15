@@ -121,13 +121,13 @@ if st.button("📤 Generar y Enviar Pedido"):
 
         df_grupo["np"] = df_grupo["np"].str.upper()
         df_grupo["fecha"] = fecha_registro
-        ip_usuario = obtener_ip()
-        df_grupo["ip"] = ip_usuario
+        #ip_usuario = obtener_ip()
+        #df_grupo["ip"] = ip_usuario
 
         # Reordenar columnas
         columnas_final = [
             "np", "cantidad", "descripcion", "cliente", "usuario", "fecha", "referencia",
-            "canal", "respaldo", "acr", "aps", "modelo", "via", "ip"]
+            "canal", "respaldo", "acr", "aps", "modelo", "via"]
         
         df_grupo = df_grupo[columnas_final]
 
