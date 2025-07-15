@@ -19,7 +19,7 @@ st.title("📦 Portal de Pedidos - Taiyo")
 credentials_dict = st.secrets["gcp_service_account"]
 credentials = service_account.Credentials.from_service_account_info(credentials_dict)
 
-# --- FUNCIÓN AUXILIAR: quitar tildes y pasar a mayúsculas ---
+# --- FUNCIONES AUXILIARES ---
 def normalizar(texto):
     if pd.isnull(texto):
         return ""
@@ -27,14 +27,20 @@ def normalizar(texto):
     texto = unicodedata.normalize("NFD", texto).encode("ascii", "ignore").decode("utf-8")
     return texto
 
-# --- FUNCIÓN: subir archivo a bucket según la vía ---
+def normalizar_usuario(texto):
+    if pd.isnull(texto):
+        return ""
+    texto = str(texto).strip().lower()
+    texto = unicodedata.normalize("NFD", texto).encode("ascii", "ignore").decode("utf-8")
+    return texto
+
 def upload_to_gcs(file_path, filename, folder):
     client = storage.Client(credentials=credentials)
     bucket = client.bucket(BUCKET_NAME)
     blob = bucket.blob(f"{folder}{filename}")
     blob.upload_from_filename(file_path)
 
-# --- INGRESO TABLA o ARCHIVO ---
+# --- INTERFAZ ---
 st.markdown("Ingresa tus ítems en la tabla o sube un archivo Excel/CSV con los campos requeridos.")
 
 columnas = [
@@ -42,13 +48,11 @@ columnas = [
     "canal", "referencia", "respaldo", "via", "usuario"
 ]
 
-# A: tabla editable
 st.subheader("🧮 Ingreso manual en tabla")
 num_filas = st.number_input("Número de ítems", min_value=1, max_value=50, value=5)
 df_vacio = pd.DataFrame(columns=columnas, index=range(num_filas))
 df_tabla = st.data_editor(df_vacio, num_rows="dynamic", use_container_width=True)
 
-# B: archivo cargado
 st.subheader("📁 O subir archivo Excel o CSV")
 archivo = st.file_uploader("Selecciona archivo", type=["xlsx", "csv"])
 
@@ -65,31 +69,34 @@ else:
 # --- BOTÓN DE ENVÍO ---
 if st.button("📤 Generar y Enviar Pedido"):
 
-    # 1. Validar columnas requeridas
     if not all(col in df_final.columns for col in OBLIGATORIAS):
         st.error(f"❌ Faltan columnas obligatorias. Se requieren: {', '.join(OBLIGATORIAS)}")
         st.stop()
 
-    # 2. Eliminar filas vacías
     df_final = df_final.dropna(subset=OBLIGATORIAS)
     if df_final.empty:
         st.error("❌ No se puede procesar: no hay filas completas con todos los campos obligatorios.")
         st.stop()
 
-    # 3. LIMPIEZA Y NORMALIZACIÓN
+    # LIMPIEZA
     df_final["np"] = df_final["np"].astype(str).str.replace("-", "").str.strip()
-    for col in df_final.columns:
-        df_final[col] = df_final[col].apply(normalizar)
 
-    # Vía normalizada
+    for col in df_final.columns:
+        if col == "usuario":
+            df_final[col] = df_final[col].apply(normalizar_usuario)
+        else:
+            df_final[col] = df_final[col].apply(normalizar)
+
+    # Normalización de vía
     df_final["via"] = df_final["via"].replace({
         "AEREO": "air", "AÉREA": "air", "AÉREO": "air", "AEREA": "air",
         "MARITIMO": "sea", "MARÍTIMO": "sea", "MARÍTIMA": "sea"
     })
 
-    # 4. Agrupar por tipo de envío
+    # Agrupar por tipo de envío
     agrupado = df_final.groupby("via")
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    fecha_registro = datetime.now().strftime("%d/%m/%y")
     errores = []
     archivos_generados = []
     dataframes_para_descarga = []
@@ -107,7 +114,14 @@ if st.button("📤 Generar y Enviar Pedido"):
         temp_path = os.path.join(tempfile.gettempdir(), filename)
 
         df_grupo["np"] = df_grupo["np"].str.upper()
-        df_grupo["fecha"] = timestamp
+        df_grupo["fecha"] = fecha_registro
+
+        # Reordenar columnas
+        columnas_final = [
+            "np", "cantidad", "descripcion", "cliente", "usuario", "fecha", "referencia",
+            "canal", "respaldo", "acr", "aps", "modelo", "via"
+        ]
+        df_grupo = df_grupo[columnas_final]
 
         df_grupo.to_csv(
             temp_path,
@@ -124,7 +138,7 @@ if st.button("📤 Generar y Enviar Pedido"):
         except Exception as e:
             errores.append(f"{via}: {e}")
 
-    # 5. Generar archivo consolidado para descarga
+    # ARCHIVO CONSOLIDADO PARA DESCARGA
     if dataframes_para_descarga:
         df_total = pd.concat(dataframes_para_descarga, ignore_index=True)
         archivo_unico = f"pedido_total_{timestamp}.csv"
@@ -138,7 +152,7 @@ if st.button("📤 Generar y Enviar Pedido"):
             quoting=1
         )
 
-    # 6. Resultado
+    # RESULTADO
     if errores:
         st.warning(f"⚠️ Algunos envíos fallaron o tenían vía no reconocida: {errores}")
     else:
