@@ -7,6 +7,7 @@ from datetime import datetime
 from google.cloud import storage
 from google.oauth2 import service_account
 import tempfile
+import requests
 
 # --- CONFIGURACIÓN ---
 BUCKET_NAME = "bk_orders"
@@ -20,6 +21,12 @@ credentials_dict = st.secrets["gcp_service_account"]
 credentials = service_account.Credentials.from_service_account_info(credentials_dict)
 
 # --- FUNCIONES AUXILIARES ---
+def obtener_ip():
+    try:
+        return requests.get("https://api.ipify.org").text
+    except:
+        return "desconocida"
+    
 def normalizar(texto):
     if pd.isnull(texto):
         return ""
@@ -45,8 +52,7 @@ st.markdown("Ingresa tus ítems en la tabla o sube un archivo Excel/CSV con los 
 
 columnas = [
     "np", "cantidad", "descripcion", "cliente", "acr", "aps", "modelo",
-    "canal", "referencia", "respaldo", "via", "usuario"
-]
+    "canal", "referencia", "respaldo", "via", "usuario"]
 
 st.subheader("🧮 Ingreso manual en tabla")
 num_filas = st.number_input("Número de ítems", min_value=1, max_value=50, value=5)
@@ -115,12 +121,14 @@ if st.button("📤 Generar y Enviar Pedido"):
 
         df_grupo["np"] = df_grupo["np"].str.upper()
         df_grupo["fecha"] = fecha_registro
+        ip_usuario = obtener_ip()
+        df_grupo["ip"] = ip_usuario
 
         # Reordenar columnas
         columnas_final = [
             "np", "cantidad", "descripcion", "cliente", "usuario", "fecha", "referencia",
-            "canal", "respaldo", "acr", "aps", "modelo", "via"
-        ]
+            "canal", "respaldo", "acr", "aps", "modelo", "via", "ip"]
+        
         df_grupo = df_grupo[columnas_final]
 
         df_grupo.to_csv(
