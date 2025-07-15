@@ -78,7 +78,6 @@ if st.button("📤 Generar y Enviar Pedido"):
 
     # 3. LIMPIEZA Y NORMALIZACIÓN
     df_final["np"] = df_final["np"].astype(str).str.replace("-", "").str.strip()
-
     for col in df_final.columns:
         df_final[col] = df_final[col].apply(normalizar)
 
@@ -93,6 +92,7 @@ if st.button("📤 Generar y Enviar Pedido"):
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     errores = []
     archivos_generados = []
+    dataframes_para_descarga = []
 
     for via, df_grupo in agrupado:
         if via == "air":
@@ -106,11 +106,9 @@ if st.button("📤 Generar y Enviar Pedido"):
         filename = f"pedido_{via}_{timestamp}.csv"
         temp_path = os.path.join(tempfile.gettempdir(), filename)
 
-        # Mayúsculas finales para np
         df_grupo["np"] = df_grupo["np"].str.upper()
         df_grupo["fecha"] = timestamp
 
-        # Guardar archivo temporal
         df_grupo.to_csv(
             temp_path,
             index=False,
@@ -122,19 +120,34 @@ if st.button("📤 Generar y Enviar Pedido"):
         try:
             upload_to_gcs(temp_path, filename, folder)
             archivos_generados.append((filename, temp_path))
+            dataframes_para_descarga.append(df_grupo)
         except Exception as e:
             errores.append(f"{via}: {e}")
 
-    # 5. Resultado
+    # 5. Generar archivo consolidado para descarga
+    if dataframes_para_descarga:
+        df_total = pd.concat(dataframes_para_descarga, ignore_index=True)
+        archivo_unico = f"pedido_total_{timestamp}.csv"
+        ruta_total = os.path.join(tempfile.gettempdir(), archivo_unico)
+
+        df_total.to_csv(
+            ruta_total,
+            index=False,
+            sep=";",
+            encoding="utf-8-sig",
+            quoting=1
+        )
+
+    # 6. Resultado
     if errores:
         st.warning(f"⚠️ Algunos envíos fallaron o tenían vía no reconocida: {errores}")
     else:
         st.success("✅ Todos los pedidos fueron enviados correctamente.")
-        for nombre_archivo, ruta_archivo in archivos_generados:
-            with open(ruta_archivo, "rb") as f:
+        if os.path.exists(ruta_total):
+            with open(ruta_total, "rb") as f:
                 st.download_button(
-                    label=f"📥 Descargar {nombre_archivo}",
+                    label=f"📥 Descargar todos los pedidos ({archivo_unico})",
                     data=f.read(),
-                    file_name=nombre_archivo,
+                    file_name=archivo_unico,
                     mime="text/csv"
                 )
