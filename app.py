@@ -84,7 +84,7 @@ if st.button("📤 Generar y Enviar Pedido"):
 
     # Vía normalizada
     df_final["via"] = df_final["via"].replace({
-        "AEREO": "air", "AÉREA": "air", "AÉREO": "air",
+        "AEREO": "air", "AÉREA": "air", "AÉREO": "air", "AEREA": "air",
         "MARITIMO": "sea", "MARÍTIMO": "sea", "MARÍTIMA": "sea"
     })
 
