@@ -161,21 +161,18 @@ if st.button("📤 Generar y Enviar Pedido"):
             gmail_user = st.secrets["email"]["gmail_user"]
             gmail_password = st.secrets["email"]["gmail_password"]
 
-            # DESTINATARIO(S)
-            destinatarios = email_destinatario
-
             # MENSAJE
             mensaje_html = f"""
             <p>Hola,</p>
             <p>Adjunto encontrarás el detalle del pedido generado automáticamente:</p>
             {df_total.to_html(index=False)}
-            <p>Saludos,<br>Equipo de Pedidos</p>
+            <p>Saludos,<br>RPA de Pedidos</p>
             """
 
             # CONFIGURACIÓN DEL MENSAJE
             msg = MIMEMultipart()
             msg['From'] = gmail_user
-            msg['To'] = ", ".join(destinatarios)
+            msg['To'] = email_destinatario
             msg['Subject'] = f"Pedido generado - {timestamp}"
             msg.attach(MIMEText(mensaje_html, 'html'))
 
@@ -183,7 +180,7 @@ if st.button("📤 Generar y Enviar Pedido"):
             server = smtplib.SMTP('smtp.gmail.com', 587)
             server.starttls()
             server.login(gmail_user, gmail_password)
-            server.sendmail(gmail_user, destinatarios, msg.as_string())
+            server.sendmail(gmail_user, email_destinatario, msg.as_string())
             server.quit()
 
             st.success("📧 Correo enviado correctamente.")
