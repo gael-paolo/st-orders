@@ -162,7 +162,7 @@ if st.button("📤 Generar y Enviar Pedido"):
             gmail_password = st.secrets["email"]["gmail_password"]
 
             # DESTINATARIO(S)
-            destinatarios = ["destinatario@ejemplo.com"]  # puedes cambiar a una lista si son varios
+            destinatarios = email_destinatario
 
             # MENSAJE
             mensaje_html = f"""
