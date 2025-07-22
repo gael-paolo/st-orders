@@ -50,6 +50,11 @@ def upload_to_gcs(file_path, filename, folder):
     blob.upload_from_filename(file_path)
 
 # --- INTERFAZ ---
+
+st.subheader("📧 Ingresar destinatario de correo")
+email_destinatario = st.text_input("Correo destinatario", placeholder="ejemplo@nissan.com.bo")
+
+
 st.markdown("Ingresa tus ítems en la tabla o sube un archivo Excel/CSV con los campos requeridos.")
 
 columnas = [
@@ -76,6 +81,9 @@ else:
 
 # --- BOTÓN DE ENVÍO ---
 if st.button("📤 Generar y Enviar Pedido"):
+
+    if not email_destinatario:
+        st.warning("⚠️ Debes ingresar un correo destinatario antes de continuar.")
 
     if not all(col in df_final.columns for col in OBLIGATORIAS):
         st.error(f"❌ Faltan columnas obligatorias. Se requieren: {', '.join(OBLIGATORIAS)}")
